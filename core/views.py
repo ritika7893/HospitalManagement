@@ -4,8 +4,12 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from .models import Patient, Doctor, PatientDoctorMapping
+
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import authenticate
 from .serializers import (
     UserRegisterSerializer,
+    UserLoginSerializer,
     PatientSerializer,
     DoctorSerializer,
     MappingSerializer,
@@ -16,21 +20,44 @@ from .serializers import (
 class RegisterView(generics.CreateAPIView):
     serializer_class = UserRegisterSerializer
 
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        refresh = RefreshToken.for_user(user)
+        return Response(
+            {
+                "user": UserRegisterSerializer(user).data,
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+            }
+        )
+
 
 class LoginView(APIView):
     def post(self, request):
-        email = request.data.get("email")
-        password = request.data.get("password")
-        user = authenticate(request, email=email, password=password)
-        if user is not None:
-            refresh = RefreshToken.for_user(user)
-            return Response(
-                {
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token),
-                }
-            )
-        return Response({"error": "Invalid credentials"}, status=400)
+        serializer = UserLoginSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data.get("email")
+            password = serializer.validated_data.get("password")
+
+            user = authenticate(request, email=email, password=password)
+            if user is not None:
+                refresh = RefreshToken.for_user(user)
+                return Response(
+                    {
+                        "user": {
+                            "id": user.id,
+                            "email": user.email,
+                            "username": user.username,
+                        },
+                        "refresh": str(refresh),
+                        "access": str(refresh.access_token),
+                    }
+                )
+            return Response({"error": "Invalid credentials"}, status=400)
+        return Response(serializer.errors, status=400)
 
 
 # Patients
