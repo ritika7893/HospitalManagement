@@ -5,22 +5,31 @@ from .views import (
     LoginView,
     PatientViewSet,
     DoctorViewSet,
-    MappingViewSet,
+    PatientDoctorMappingViewSet,
     PatientDoctorsView,
+    DoctorPatientsView,
 )
 
 router = DefaultRouter()
-router.register("patients", PatientViewSet, basename="patient")
-router.register("doctors", DoctorViewSet, basename="doctor")
-router.register("mappings", MappingViewSet, basename="mapping")
+router.register(r"patients", PatientViewSet, basename="patient")
+router.register(r"doctors", DoctorViewSet, basename="doctor")
+router.register(r"mappings", PatientDoctorMappingViewSet, basename="mapping")
 
 urlpatterns = [
+    # Auth endpoints
     path("auth/register/", RegisterView.as_view(), name="register"),
     path("auth/login/", LoginView.as_view(), name="login"),
+    # ViewSet endpoints
+    path("", include(router.urls)),
+    # Custom endpoints
     path(
-        "mappings/<int:patient_id>/",
+        "mappings/patient/<int:patient_id>/",
         PatientDoctorsView.as_view(),
         name="patient-doctors",
     ),
-    path("", include(router.urls)),
+    path(
+        "mappings/doctor/<int:doctor_id>/",
+        DoctorPatientsView.as_view(),
+        name="doctor-patients",
+    ),
 ]
